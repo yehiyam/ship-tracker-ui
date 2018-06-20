@@ -5,7 +5,7 @@ import { db } from './firestore'
 import { easeCubic } from 'd3-ease';
 import { defaultMapStyle, dataLayer } from './mapState.js';
 import MARKER_STYLE from './marker-style';
-
+const moment = require('moment-timezone');
 const GeoJSON = require('geojson');
 class Map extends Component {
 
@@ -21,6 +21,7 @@ class Map extends Component {
             zoom: 2
         },
         lastPos: null,
+        dateMarkers: [],
         isLoaded: false
     };
 
@@ -78,21 +79,42 @@ class Map extends Component {
                 const { lat, long, timestamp } = data[data.length - 1];
                 // this.setState({ viewport: { ...this.state.viewport, latitude: +lat, longitude: +long, zoom: 4 } });
                 this._goToPos(+lat, +long, 4)
+                const dateMarkers = data.filter(d => {
+                    if (!d.timestamp) {
+                        return false;
+                    }
+                    const hours = moment.tz(d.timestamp,'UTC').tz('Asia/Kamchatka').hours();
+                    return (hours === 7);
+                })
                 this.setState({
                     lastPos: {
                         lat: +lat,
                         long: +long,
                         timestamp: new Date(timestamp)
                     },
-                    isLoaded: true
+                    isLoaded: true,
+                    dateMarkers
                 })
             })
         // })
 
     }
 
+    _createDayMarker(item, i) {
+        return (
+            <Marker key={`hourly${i}`}
+                latitude={+(item.lat)}
+                longitude={+(item.long)} >
+                <div className="hourly">
+                    <span>
+                        {moment(item.timestamp).tz('Asia/Kamchatka').format('D MMM')}
+                    </span>
+                </div>
+            </Marker>
+        )
+    }
     render() {
-        const { viewport, mapStyle, lastPos, isLoaded } = this.state;
+        const { viewport, mapStyle, lastPos, isLoaded,dateMarkers  } = this.state;
         return (
             <div>
 
@@ -104,6 +126,7 @@ class Map extends Component {
                     <div>
                         {isLoaded ? null : <div className="loading">Loading</div>}
                         <style>{MARKER_STYLE}</style>
+                        {dateMarkers.map(this._createDayMarker)}
                         {lastPos ? <Marker latitude={lastPos.lat} longitude={lastPos.long} > <div className="station"><span>{lastPos.timestamp.toString()}</span></div></Marker> : null}
                     </div>
                 </ReactMapGL>
