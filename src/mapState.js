@@ -2,12 +2,12 @@ import { fromJS } from 'immutable';
 import MAP_STYLE from './style.json';
 // For more information on data-driven styles, see https://www.mapbox.com/help/gl-dds-ref/
 export const dataLayer = fromJS({
-    id: 'data',
+    id: 'point',
     source: 'track',
-    type: 'symbol',
-    interactive: true,
-    layout: {
-        'icon-image': '{icon}-15'
+    type: 'circle',
+    paint: {
+      'circle-radius': 5,
+      'circle-color': '#007cbf',
     }
 });
 

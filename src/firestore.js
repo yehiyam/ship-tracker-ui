@@ -1,6 +1,6 @@
 //top of the file
-import firebase from 'firebase'
-require('firebase/firestore')
+import firebase from 'firebase/app'
+import 'firebase/firestore'
 
 const config = {
     apiKey: process.env.REACT_APP_FIREBASE_TOKEN,
@@ -12,6 +12,7 @@ const config = {
 };
 firebase.initializeApp(config);
 
-
+const settings = {/* your settings... */ timestampsInSnapshots: true };
+firebase.firestore().settings(settings);
 //bottom of the file
 export const db = firebase.firestore()
