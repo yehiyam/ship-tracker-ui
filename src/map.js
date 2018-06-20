@@ -1,5 +1,5 @@
 import React, { Component } from 'react';
-import ReactMapGL, { FlyToInterpolator , Marker} from 'react-map-gl';
+import ReactMapGL, { FlyToInterpolator, Marker } from 'react-map-gl';
 import { fromJS } from 'immutable';
 import { db } from './firestore'
 import { easeCubic } from 'd3-ease';
@@ -19,8 +19,9 @@ class Map extends Component {
             latitude: 20,
             longitude: 40,
             zoom: 2
-        }, 
-        lastPos: null
+        },
+        lastPos: null,
+        isLoaded: false
     };
 
     _onViewportChange = viewport => {
@@ -74,17 +75,24 @@ class Map extends Component {
                 // this.setState({ data });
                 const geoJsonData = GeoJSON.parse(data, { Point: ['lat', 'long'] });
                 this._loadData(geoJsonData)
-                const { lat, long , timestamp} = data[data.length - 1];
+                const { lat, long, timestamp } = data[data.length - 1];
                 // this.setState({ viewport: { ...this.state.viewport, latitude: +lat, longitude: +long, zoom: 4 } });
                 this._goToPos(+lat, +long, 4)
-                this.setState({lastPos:{lat: +lat, long: +long, timestamp: new Date(timestamp)}})
+                this.setState({
+                    lastPos: {
+                        lat: +lat,
+                        long: +long,
+                        timestamp: new Date(timestamp)
+                    },
+                    isLoaded: true
+                })
             })
         // })
 
     }
 
     render() {
-        const { viewport, mapStyle, lastPos } = this.state;
+        const { viewport, mapStyle, lastPos, isLoaded } = this.state;
         return (
             <div>
 
@@ -93,8 +101,11 @@ class Map extends Component {
                     {...viewport}
                     onViewportChange={this._onViewportChange}
                     onLoad={this.loadFromFirestore.bind(this)}        >
-                    <style>{MARKER_STYLE}</style>
-                    {lastPos?<Marker latitude={lastPos.lat} longitude={lastPos.long} > <div className="station"><span>{lastPos.timestamp.toString()}</span></div></Marker>:null}
+                    <div>
+                        {isLoaded ? null : <div className="loading">Loading</div>}
+                        <style>{MARKER_STYLE}</style>
+                        {lastPos ? <Marker latitude={lastPos.lat} longitude={lastPos.long} > <div className="station"><span>{lastPos.timestamp.toString()}</span></div></Marker> : null}
+                    </div>
                 </ReactMapGL>
             </div>
         );
