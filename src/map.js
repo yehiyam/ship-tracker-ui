@@ -1,8 +1,11 @@
 import React, { Component } from 'react';
-import ReactMapGL, { Marker } from 'react-map-gl';
+import ReactMapGL, { FlyToInterpolator , Marker} from 'react-map-gl';
 import { fromJS } from 'immutable';
 import { db } from './firestore'
+import { easeCubic } from 'd3-ease';
 import { defaultMapStyle, dataLayer } from './mapState.js';
+import MARKER_STYLE from './marker-style';
+
 const GeoJSON = require('geojson');
 class Map extends Component {
 
@@ -16,7 +19,25 @@ class Map extends Component {
             latitude: 20,
             longitude: 40,
             zoom: 2
-        }
+        }, 
+        lastPos: null
+    };
+
+    _onViewportChange = viewport => {
+        this.setState({ viewport });
+    };
+
+    _goToPos = (lat, long, zoom) => {
+        const viewport = {
+            ...this.state.viewport,
+            longitude: long,
+            latitude: lat,
+            zoom: zoom,
+            transitionDuration: 5000,
+            transitionInterpolator: new FlyToInterpolator(),
+            transitionEasing: easeCubic
+        };
+        this.setState({ viewport });
     };
 
     _loadData = data => {
@@ -26,16 +47,20 @@ class Map extends Component {
             // Add point layer to map
             .set('layers', defaultMapStyle.get('layers').push(dataLayer));
 
+
         this.setState({ data, mapStyle });
     };
 
     componentDidMount() {
-        window.onresize = () => this.setState({
-            viewport: {
-                width: window.innerWidth,
-                height: window.innerHeight
-            }
-        });
+        window.onresize = () => {
+            this.setState({
+                viewport: {
+                    ...this.state.viewport,
+                    width: window.innerWidth,
+                    height: window.innerHeight
+                }
+            })
+        };
     }
     loadFromFirestore() {
         // ReactMapGL.getMap().on('load',()=>{
@@ -49,31 +74,27 @@ class Map extends Component {
                 // this.setState({ data });
                 const geoJsonData = GeoJSON.parse(data, { Point: ['lat', 'long'] });
                 this._loadData(geoJsonData)
+                const { lat, long , timestamp} = data[data.length - 1];
+                // this.setState({ viewport: { ...this.state.viewport, latitude: +lat, longitude: +long, zoom: 4 } });
+                this._goToPos(+lat, +long, 4)
+                this.setState({lastPos:{lat: +lat, long: +long, timestamp: new Date(timestamp)}})
             })
         // })
 
     }
 
-    _renderMarker(location, i) {
-        const { timestamp, lat, long } = location;
-        return (
-            <Marker key={i} longitude={+long} latitude={+lat} >
-                <div className="station"><span>{timestamp ? new Date(timestamp).toString() : ''}</span></div>
-            </Marker>
-        );
-    }
-
     render() {
-        const { viewport, mapStyle, data } = this.state;
+        const { viewport, mapStyle, lastPos } = this.state;
         return (
             <div>
 
                 <ReactMapGL mapboxApiAccessToken={process.env.REACT_APP_MAPBOX_TOKEN}
                     mapStyle={mapStyle}
                     {...viewport}
-                    onViewportChange={(viewport) => this.setState({ viewport })}
+                    onViewportChange={this._onViewportChange}
                     onLoad={this.loadFromFirestore.bind(this)}        >
-
+                    <style>{MARKER_STYLE}</style>
+                    {lastPos?<Marker latitude={lastPos.lat} longitude={lastPos.long} > <div className="station"><span>{lastPos.timestamp.toString()}</span></div></Marker>:null}
                 </ReactMapGL>
             </div>
         );
