@@ -2,6 +2,8 @@ import React, { Component } from 'react';
 import './App.css';
 import 'mapbox-gl/dist/mapbox-gl.css';
 import Map from './map'
+import Switch from './switch'
+// Be sure to include styles at some point, probably during your bootstrapping
 require('dotenv').config()
 
 class App extends Component {
@@ -9,6 +11,7 @@ class App extends Component {
     return (
       <div className="App">
         <Map />
+        {/* <Switch isChecked={ true } label="xxx" /> */}
 
       </div>
     );
