@@ -46,15 +46,6 @@ export default `
   line-height: 24px;
   font-size: 13px;
   white-space: nowrap;
-}
-.hourly span {
-  display: none;
-}
-.hourly:hover {
-  background: rgba(0,0,0,0.8);
-  color: #fff;
-}
-.hourly:hover span {
-  display: inline-block;
+  color: #000;
 }
 `;

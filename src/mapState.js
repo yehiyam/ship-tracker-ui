@@ -7,9 +7,9 @@ export const dataLayer = fromJS({
     source: 'track',
     type: 'circle',
     paint: {
-      'circle-radius': 5,
+      'circle-radius': 3,
       'circle-color': '#007cbf',
     }
 });
 
-export const defaultMapStyle = fromJS(satStyle);
+export const defaultMapStyle = fromJS(outdoorStyle);
