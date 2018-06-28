@@ -3,7 +3,7 @@ import ReactMapGL, { FlyToInterpolator, Marker } from 'react-map-gl';
 import { fromJS } from 'immutable';
 import { db } from './firestore'
 import { easeCubic } from 'd3-ease';
-import { defaultMapStyle, dataLayer } from './mapState.js';
+import { defaultMapStyle, dataLayer ,dataLayerLine} from './mapState.js';
 import MARKER_STYLE from './marker-style';
 const moment = require('moment-timezone');
 const GeoJSON = require('geojson');
@@ -42,12 +42,13 @@ class Map extends Component {
         this.setState({ viewport });
     };
 
-    _loadData = data => {
+    _loadData = (data,lineData) => {
         const mapStyle = defaultMapStyle
             // Add geojson source to map
             .setIn(['sources', 'track'], fromJS({ type: 'geojson', data }))
+            .setIn(['sources', 'trackLine'], fromJS({ type: 'geojson', data:lineData }))
             // Add point layer to map
-            .set('layers', defaultMapStyle.get('layers').push(dataLayer));
+            .set('layers', defaultMapStyle.get('layers').push(dataLayerLine).push(dataLayer))
 
 
         this.setState({ data, mapStyle });
@@ -74,8 +75,10 @@ class Map extends Component {
                 const data = collection.docs.map(d => ({ ...(d.data()), 'marker-symbol': 'rocket' }))
                 // .map(d=>([d.long, d.lat]))
                 // this.setState({ data });
+                const line=data.map(d=>[+d.long, +d.lat]);
                 const geoJsonData = GeoJSON.parse(data, { Point: ['lat', 'long'] });
-                this._loadData(geoJsonData)
+                const geoJsonLine = GeoJSON.parse({line},{'LineString': 'line'});
+                this._loadData(geoJsonData,geoJsonLine)
                 const { lat, long, timestamp } = data[data.length - 1];
                 // this.setState({ viewport: { ...this.state.viewport, latitude: +lat, longitude: +long, zoom: 4 } });
                 this._goToPos(+lat, +long, 4)
