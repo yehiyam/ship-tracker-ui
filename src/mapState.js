@@ -4,6 +4,7 @@ import outdoorStyle from './style.json';
 // For more information on data-driven styles, see https://www.mapbox.com/help/gl-dds-ref/
 export const dataLayer = fromJS({
   id: 'point',
+  interactive: true,
   source: 'track',
   type: 'circle',
   paint: {
