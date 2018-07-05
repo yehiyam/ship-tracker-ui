@@ -4,6 +4,7 @@ import { fromJS } from 'immutable';
 import { db } from './firestore'
 import { easeCubic } from 'd3-ease';
 import ReactGA from 'react-ga';
+import formatcoords from 'formatcoords';
 import { defaultMapStyle, dataLayer, dataLayerLine } from './mapState.js';
 import MARKER_STYLE from './marker-style';
 const moment = require('moment-timezone');
@@ -24,7 +25,8 @@ class Map extends Component {
         lastPos: null,
         dateMarkers: [],
         isLoaded: false,
-        hoverInfo: null
+        hoverInfo: null,
+        mouseLocation: null
     };
 
     _onViewportChange = viewport => {
@@ -121,6 +123,15 @@ class Map extends Component {
         )
     }
 
+    _normalizeLongLat([long, lat]) {
+        if (long > 180) {
+            long = 360 - long;
+        }
+        if (long < -180) {
+            long = long + 360;
+        }
+        return [long, lat];
+    }
     _onHover(event) {
         let hoverInfo = null;
 
@@ -131,9 +142,33 @@ class Map extends Component {
                 properties: point.properties
             };
         }
-        this.setState({ hoverInfo })
+        this.setState({ hoverInfo, mouseLocation: this._normalizeLongLat(event.lngLat) })
     };
 
+    _mouse = (container, event) => {
+        const rect = container.getBoundingClientRect();
+        const x = event.clientX - rect.left - container.clientLeft;
+        const y = event.clientY - rect.top - container.clientTop;
+        return [x, y];
+    }
+
+    _onMouseMove(event) {
+        //const pixel = this._mouse(this.refs.container, event);
+        //const lngLat = this.context.viewport.unproject(pixel);
+        console.log(event)
+
+    }
+
+    _renderMouseLocation() {
+
+        return (
+            <div className='mouse-location'>
+                {/* {this.state.mouseLocation ? formatcoords(this.state.mouseLocation, true).format({decimalPlaces:0}) : null}
+                <br/> */}
+                {this.state.mouseLocation ? `${this.state.mouseLocation[1].toFixed(3)} ${this.state.mouseLocation[0].toFixed(3)}` : null}
+            </div>
+        )
+    }
     _renderHover() {
         //        {lastPos ? <Marker latitude={lastPos.lat} longitude={lastPos.long} > <div className="station"><span>{lastPos.timestamp.toString()}</span></div></Marker> : null}
         const { hoverInfo } = this.state;
@@ -157,13 +192,15 @@ class Map extends Component {
                     {...viewport}
                     onViewportChange={this._onViewportChange}
                     onLoad={this.loadFromFirestore.bind(this)}
-                    onHover={this._onHover.bind(this)}       >
+                    onHover={this._onHover.bind(this)}
+                    onMouseMove={this._onMouseMove.bind(this)}     >
                     <div>
                         {isLoaded ? null : <div className="loading">Loading</div>}
                         <style>{MARKER_STYLE}</style>
                         {dateMarkers.map(this._createDayMarker)}
                         {lastPos ? <Marker latitude={lastPos.lat} longitude={lastPos.long} > <div className="station"><span>{lastPos.timestamp.toString()}</span></div></Marker> : null}
                         {this._renderHover()}
+                        {this._renderMouseLocation()}
                     </div>
                 </ReactMapGL>
             </div>
