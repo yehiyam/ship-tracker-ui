@@ -56,9 +56,15 @@ workflows:
   build_and_test:
     jobs:
       - install
+          filters:
+            tags:
+              ignore: /^v.*/
       - test:
           requires:
             - install
+          filters:
+            tags:
+              ignore: /^v.*/
       - deploy:
           requires:
             - test
