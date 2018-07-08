@@ -44,7 +44,7 @@ jobs:
       - checkout
       - restore_cache:
           key: dependency-cache-{{ checksum "package.json" }}
-       - run:
+      - run:
           name: Install npm
           command: npm install
       - run:
