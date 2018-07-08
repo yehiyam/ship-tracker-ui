@@ -1,10 +1,10 @@
 import React, { Component } from 'react';
 import ReactMapGL, { FlyToInterpolator, Marker } from 'react-map-gl';
+import { ScaleControl } from "mapbox-gl";
 import { fromJS } from 'immutable';
 import { db } from './firestore'
 import { easeCubic } from 'd3-ease';
 import ReactGA from 'react-ga';
-import formatcoords from 'formatcoords';
 import { defaultMapStyle, dataLayer, dataLayerLine } from './mapState.js';
 import MARKER_STYLE from './marker-style';
 const moment = require('moment-timezone');
@@ -49,7 +49,7 @@ class Map extends Component {
     _loadData = (data, lineData) => {
         const mapStyle = defaultMapStyle
             // Add geojson source to map
-            .setIn(['sources', 'track'], fromJS({ type: 'geojson', data }))
+            .setIn(['sources', 'track'], fromJS({ type: 'geojson', data}))
             .setIn(['sources', 'trackLine'], fromJS({ type: 'geojson', data: lineData }))
             // Add point layer to map
             .set('layers', defaultMapStyle.get('layers').push(dataLayerLine).push(dataLayer))
@@ -70,6 +70,10 @@ class Map extends Component {
                 }
             })
         };
+        const map = this.mapRef.getMap();
+        map.addControl(new ScaleControl({
+            maxWidth: 200
+        }));
     }
     loadFromFirestore() {
         // ReactMapGL.getMap().on('load',()=>{
@@ -193,14 +197,15 @@ class Map extends Component {
                     onViewportChange={this._onViewportChange}
                     onLoad={this.loadFromFirestore.bind(this)}
                     onHover={this._onHover.bind(this)}
-                    onMouseMove={this._onMouseMove.bind(this)}     >
+                    onMouseMove={this._onMouseMove.bind(this)}
+                    ref={map => this.mapRef = map}     >
                     <div>
                         {isLoaded ? null : <div className="loading">Loading</div>}
                         <style>{MARKER_STYLE}</style>
                         {dateMarkers.map(this._createDayMarker)}
                         {lastPos ? <Marker latitude={lastPos.lat} longitude={lastPos.long} > <div className="station"><span>{lastPos.timestamp.toString()}</span></div></Marker> : null}
                         {this._renderHover()}
-                        {this._renderMouseLocation()}
+                        {/* {this._renderMouseLocation()} */}
                     </div>
                 </ReactMapGL>
             </div>
