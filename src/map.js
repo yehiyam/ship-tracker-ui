@@ -205,7 +205,7 @@ class Map extends Component {
                         {dateMarkers.map(this._createDayMarker)}
                         {lastPos ? <Marker latitude={lastPos.lat} longitude={lastPos.long} > <div className="station"><span>{lastPos.timestamp.toString()}</span></div></Marker> : null}
                         {this._renderHover()}
-                        {/* {this._renderMouseLocation()} */}
+                        {this._renderMouseLocation()}
                     </div>
                 </ReactMapGL>
             </div>
