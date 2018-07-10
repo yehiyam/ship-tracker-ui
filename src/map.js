@@ -1,5 +1,6 @@
 import React, { Component } from 'react';
 import ReactMapGL, { FlyToInterpolator, Marker } from 'react-map-gl';
+import { ScaleControl } from "mapbox-gl";
 import { fromJS } from 'immutable';
 import { db } from './firestore'
 import { easeCubic } from 'd3-ease';
@@ -24,7 +25,8 @@ class Map extends Component {
         lastPos: null,
         dateMarkers: [],
         isLoaded: false,
-        hoverInfo: null
+        hoverInfo: null,
+        mouseLocation: null
     };
 
     _onViewportChange = viewport => {
@@ -68,6 +70,10 @@ class Map extends Component {
                 }
             })
         };
+        const map = this.mapRef.getMap();
+        map.addControl(new ScaleControl({
+            maxWidth: 200
+        }));
     }
     loadFromFirestore() {
         // ReactMapGL.getMap().on('load',()=>{
@@ -79,7 +85,11 @@ class Map extends Component {
                 const data = collection.docs.map(d => ({ ...(d.data()), 'marker-symbol': 'rocket' }))
                 // .map(d=>([d.long, d.lat]))
                 // this.setState({ data });
-                const line = data.map(d => [+d.long, +d.lat]);
+                const line = data.map(d => {
+                    const lat = +d.lat;
+                    const long = +d.long;
+                    return [long < 0 ? long + 360 : long, lat]
+                });
                 const geoJsonData = GeoJSON.parse(data, { Point: ['lat', 'long'] });
                 const geoJsonLine = GeoJSON.parse({ line }, { 'LineString': 'line' });
                 this._loadData(geoJsonData, geoJsonLine)
@@ -107,11 +117,40 @@ class Map extends Component {
 
     }
 
-    _createDayMarker(item, i) {
+    _normalizeLong(long, viewportLong) {
+        if (viewportLong < 0) {
+            long = long > 0 ? long - 360 : long;
+        }
+        else {
+            long = long < 0 ? long + 360 : long;
+        }
+        return long;
+    }
+
+    _renderLastPos(item, viewportLong) {
+        if (!item) {
+            return null;
+        }
+        const lat = +item.lat;
+        const long = this._normalizeLong(+item.long, viewportLong);
+        return (
+            <Marker latitude={lat} longitude={long} >
+                <div className="station">
+                    <span>
+                        {item.timestamp.toString()}
+                    </span>
+                </div>
+            </Marker>
+        )
+    }
+    _createDayMarker(item, i, viewportLong) {
+        const lat = +item.lat;
+        const long = this._normalizeLong(+item.long, viewportLong);
+
         return (
             <Marker key={`hourly${i}`}
-                latitude={+(item.lat)}
-                longitude={+(item.long)} >
+                latitude={lat}
+                longitude={long} >
                 <div className="hourly">
                     <span>
                         {moment(item.timestamp).tz('Asia/Kamchatka').format('D MMM')}
@@ -121,6 +160,15 @@ class Map extends Component {
         )
     }
 
+    _normalizeLongLat([long, lat]) {
+        if (long > 180) {
+            long = 360 - long;
+        }
+        if (long < -180) {
+            long = long + 360;
+        }
+        return [long, lat];
+    }
     _onHover(event) {
         let hoverInfo = null;
 
@@ -131,9 +179,33 @@ class Map extends Component {
                 properties: point.properties
             };
         }
-        this.setState({ hoverInfo })
+        this.setState({ hoverInfo, mouseLocation: this._normalizeLongLat(event.lngLat) })
     };
 
+    _mouse = (container, event) => {
+        const rect = container.getBoundingClientRect();
+        const x = event.clientX - rect.left - container.clientLeft;
+        const y = event.clientY - rect.top - container.clientTop;
+        return [x, y];
+    }
+
+    _onMouseMove(event) {
+        //const pixel = this._mouse(this.refs.container, event);
+        //const lngLat = this.context.viewport.unproject(pixel);
+        console.log(event)
+
+    }
+
+    _renderMouseLocation() {
+
+        return (
+            <div className='mouse-location'>
+                {/* {this.state.mouseLocation ? formatcoords(this.state.mouseLocation, true).format({decimalPlaces:0}) : null}
+                <br/> */}
+                {this.state.mouseLocation ? `${this.state.mouseLocation[1].toFixed(3)} ${this.state.mouseLocation[0].toFixed(3)}` : null}
+            </div>
+        )
+    }
     _renderHover() {
         //        {lastPos ? <Marker latitude={lastPos.lat} longitude={lastPos.long} > <div className="station"><span>{lastPos.timestamp.toString()}</span></div></Marker> : null}
         const { hoverInfo } = this.state;
@@ -157,13 +229,16 @@ class Map extends Component {
                     {...viewport}
                     onViewportChange={this._onViewportChange}
                     onLoad={this.loadFromFirestore.bind(this)}
-                    onHover={this._onHover.bind(this)}       >
+                    onHover={this._onHover.bind(this)}
+                    onMouseMove={this._onMouseMove.bind(this)}
+                    ref={map => this.mapRef = map}     >
                     <div>
                         {isLoaded ? null : <div className="loading">Loading</div>}
                         <style>{MARKER_STYLE}</style>
-                        {dateMarkers.map(this._createDayMarker)}
-                        {lastPos ? <Marker latitude={lastPos.lat} longitude={lastPos.long} > <div className="station"><span>{lastPos.timestamp.toString()}</span></div></Marker> : null}
+                        {dateMarkers.map((item, i) => this._createDayMarker(item, i, viewport.longitude))}
+                        {this._renderLastPos(lastPos,viewport.longitude)}
                         {this._renderHover()}
+                        {this._renderMouseLocation()}
                     </div>
                 </ReactMapGL>
             </div>

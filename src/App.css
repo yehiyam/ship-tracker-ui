@@ -44,3 +44,18 @@
   background: rgba(0,0,0,0.8);
   color: #fff;
 }
+
+.mouse-location {
+  position:fixed;
+  width: 150px;
+  top: 10px;
+  left: 10px;
+  border: 3px solid rgb(247, 165, 165);
+  text-align: center;
+  border-radius: 10px;
+  /* padding-right: 12px; */
+  font-size: 16px;
+  white-space: nowrap;
+  background: rgba(0,0,0,0.7);
+  color: #fff;
+}
