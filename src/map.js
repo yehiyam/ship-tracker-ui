@@ -7,11 +7,12 @@ import { easeCubic } from 'd3-ease';
 import ReactGA from 'react-ga';
 import { defaultMapStyle, dataLayer, dataLayerLine } from './mapState.js';
 import MARKER_STYLE from './marker-style';
+import trips from './trips';
 const moment = require('moment-timezone');
 const GeoJSON = require('geojson');
 class Map extends Component {
 
-
+  
     state = {
         mapStyle: defaultMapStyle,
         data: null,
@@ -26,7 +27,9 @@ class Map extends Component {
         dateMarkers: [],
         isLoaded: false,
         hoverInfo: null,
-        mouseLocation: null
+        mouseLocation: null,
+        selectedTrip:0
+
     };
 
     _onViewportChange = viewport => {
@@ -80,6 +83,7 @@ class Map extends Component {
         db
             .collection('ship-location')
             .orderBy('timestamp', 'asc')
+            .where('timestamp','>')
             .get()
             .then(collection => {
                 const data = collection.docs.map(d => ({ ...(d.data()), 'marker-symbol': 'rocket' }))
@@ -219,6 +223,14 @@ class Map extends Component {
         )
 
     }
+
+    componentWillReceiveProps(){
+        const {selectedTrip}=this.props;
+        if (selectedTrip !== this.state.selectedTrip){
+            this.setState({selectedTrip});
+            this.loadFromFirestore();
+        }
+    }
     render() {
         const { viewport, mapStyle, lastPos, isLoaded, dateMarkers } = this.state;
         return (
@@ -228,7 +240,7 @@ class Map extends Component {
                     mapStyle={mapStyle}
                     {...viewport}
                     onViewportChange={this._onViewportChange}
-                    onLoad={this.loadFromFirestore.bind(this)}
+                    // onLoad={this.loadFromFirestore.bind(this)}
                     onHover={this._onHover.bind(this)}
                     onMouseMove={this._onMouseMove.bind(this)}
                     ref={map => this.mapRef = map}     >
