@@ -2,6 +2,10 @@ import React, { Component } from 'react';
 import ReactMapGL, { FlyToInterpolator, Marker } from 'react-map-gl';
 import { ScaleControl } from "mapbox-gl";
 import { fromJS } from 'immutable';
+import InputLabel from '@material-ui/core/InputLabel';
+import MenuItem from '@material-ui/core/MenuItem';
+import FormControl from '@material-ui/core/FormControl';
+import Select from '@material-ui/core/Select';
 import { db } from './firestore'
 import { easeCubic } from 'd3-ease';
 import ReactGA from 'react-ga';
@@ -12,7 +16,7 @@ const moment = require('moment-timezone');
 const GeoJSON = require('geojson');
 class Map extends Component {
 
-  
+
     state = {
         mapStyle: defaultMapStyle,
         data: null,
@@ -25,10 +29,10 @@ class Map extends Component {
         },
         lastPos: null,
         dateMarkers: [],
-        isLoaded: false,
+        isLoaded: true,
         hoverInfo: null,
         mouseLocation: null,
-        selectedTrip:0
+        selectedTrip: 2
 
     };
 
@@ -48,6 +52,14 @@ class Map extends Component {
         };
         this.setState({ viewport });
     };
+    _clearData = () => {
+        const mapStyle = defaultMapStyle
+            // Add point layer to map
+            .set('layers', defaultMapStyle.get('layers').remove(dataLayerLine).remove(dataLayer))
+
+
+        this.setState({ mapStyle });
+    }
 
     _loadData = (data, lineData) => {
         const mapStyle = defaultMapStyle
@@ -79,12 +91,20 @@ class Map extends Component {
         }));
     }
     loadFromFirestore() {
+        this.setState({ isLoaded: false });
+        this._clearData();
+        if (this.state.selectedTrip < 0) {
+            return;
+        }
         // ReactMapGL.getMap().on('load',()=>{
-        db
-            .collection('ship-location')
-            .orderBy('timestamp', 'asc')
-            .where('timestamp','>')
-            .get()
+        let ref = db.collection('ship-location')
+            .orderBy('timestamp', 'asc');
+        if (this.state.selectedTrip !== 0) {
+            const trip = trips[this.state.selectedTrip];
+            ref = ref.where('timestamp', '>', trip.start)
+                .where('timestamp', '<', trip.end)
+        }
+        ref.get()
             .then(collection => {
                 const data = collection.docs.map(d => ({ ...(d.data()), 'marker-symbol': 'rocket' }))
                 // .map(d=>([d.long, d.lat]))
@@ -224,13 +244,17 @@ class Map extends Component {
 
     }
 
-    componentWillReceiveProps(){
-        const {selectedTrip}=this.props;
-        if (selectedTrip !== this.state.selectedTrip){
-            this.setState({selectedTrip});
+    handleChange = (event) => {
+        this.setState({ selectedTrip: event.target.value });
+        
+    };
+
+    componentWillUpdate(nextProps, nextState){
+        if (this.state.selectedTrip !== nextState.selectedTrip){
             this.loadFromFirestore();
         }
     }
+
     render() {
         const { viewport, mapStyle, lastPos, isLoaded, dateMarkers } = this.state;
         return (
@@ -240,7 +264,7 @@ class Map extends Component {
                     mapStyle={mapStyle}
                     {...viewport}
                     onViewportChange={this._onViewportChange}
-                    // onLoad={this.loadFromFirestore.bind(this)}
+                    onLoad={this.loadFromFirestore.bind(this)}
                     onHover={this._onHover.bind(this)}
                     onMouseMove={this._onMouseMove.bind(this)}
                     ref={map => this.mapRef = map}     >
@@ -248,11 +272,31 @@ class Map extends Component {
                         {isLoaded ? null : <div className="loading">Loading</div>}
                         <style>{MARKER_STYLE}</style>
                         {dateMarkers.map((item, i) => this._createDayMarker(item, i, viewport.longitude))}
-                        {this._renderLastPos(lastPos,viewport.longitude)}
+                        {this._renderLastPos(lastPos, viewport.longitude)}
                         {this._renderHover()}
                         {this._renderMouseLocation()}
                     </div>
                 </ReactMapGL>
+                <div className="dropdown-container">
+                    <form>
+                        <FormControl>
+                            <InputLabel htmlFor="trip">Trip</InputLabel>
+                            <Select
+                                value={this.state.selectedTrip}
+                                onChange={this.handleChange}
+                                inputProps={{
+                                    name: 'trip',
+                                    id: 'trip',
+                                }}
+                            >
+                                <MenuItem value="">
+                                    <em>None</em>
+                                </MenuItem>
+                                {trips.map(t => (<MenuItem key={t.value} value={t.value}>{t.title}</MenuItem>))}
+                            </Select>
+                        </FormControl>
+                    </form>
+                </div>
             </div>
         );
     }
