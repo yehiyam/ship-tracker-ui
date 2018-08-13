@@ -2,19 +2,13 @@ import React, { Component } from 'react';
 import ReactMapGL, { FlyToInterpolator, Marker } from 'react-map-gl';
 import { ScaleControl } from "mapbox-gl";
 import { fromJS } from 'immutable';
-// import InputLabel from '@material-ui/core/InputLabel';
-// import MenuItem from '@material-ui/core/MenuItem';
-// import FormControl from '@material-ui/core/FormControl';
-// import Select from '@material-ui/core/Select';
 import Snackbar from '@material-ui/core/Snackbar';
-import SnackbarContent from '@material-ui/core/SnackbarContent';
-import { withStyles } from '@material-ui/core/styles';
 import { db } from './firestore'
 import { easeCubic } from 'd3-ease';
-import queryString from 'query-string';
 import ReactGA from 'react-ga';
 import { defaultMapStyle, dataLayer, dataLayerLine } from './mapState.js';
 import MARKER_STYLE from './marker-style';
+const queryString = require('query-string');
 
 // import trips from './trips';
 const moment = require('moment-timezone');
