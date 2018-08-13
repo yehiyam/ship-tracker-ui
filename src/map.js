@@ -2,16 +2,21 @@ import React, { Component } from 'react';
 import ReactMapGL, { FlyToInterpolator, Marker } from 'react-map-gl';
 import { ScaleControl } from "mapbox-gl";
 import { fromJS } from 'immutable';
-import InputLabel from '@material-ui/core/InputLabel';
-import MenuItem from '@material-ui/core/MenuItem';
-import FormControl from '@material-ui/core/FormControl';
-import Select from '@material-ui/core/Select';
+// import InputLabel from '@material-ui/core/InputLabel';
+// import MenuItem from '@material-ui/core/MenuItem';
+// import FormControl from '@material-ui/core/FormControl';
+// import Select from '@material-ui/core/Select';
+import Snackbar from '@material-ui/core/Snackbar';
+import SnackbarContent from '@material-ui/core/SnackbarContent';
+import { withStyles } from '@material-ui/core/styles';
 import { db } from './firestore'
 import { easeCubic } from 'd3-ease';
+import queryString from 'query-string';
 import ReactGA from 'react-ga';
 import { defaultMapStyle, dataLayer, dataLayerLine } from './mapState.js';
 import MARKER_STYLE from './marker-style';
-import trips from './trips';
+
+// import trips from './trips';
 const moment = require('moment-timezone');
 const GeoJSON = require('geojson');
 class Map extends Component {
@@ -32,7 +37,9 @@ class Map extends Component {
         isLoaded: true,
         hoverInfo: null,
         mouseLocation: null,
-        selectedTrip: 2
+        start: null,
+        end: null,
+        warningOpen:false
 
     };
 
@@ -72,7 +79,28 @@ class Map extends Component {
 
         this.setState({ data, mapStyle });
     };
-
+    _parseDate(date){
+        if (!date){
+            return null;
+        }
+        try{
+            const dateParsed = moment(date).format('x');
+            if (dateParsed === 'Invalid date'){
+                return null;
+            }
+            return parseInt(dateParsed,10);
+        }
+        catch(e){
+            console.log(e);
+        }
+    }
+    _hashHandler(){
+        const parsed = queryString.parse(window.location.hash?window.location.hash:window.location.search);
+        this.setState({
+            start: this._parseDate(parsed.start),
+            end: this._parseDate(parsed.end)
+        })
+    }
     componentDidMount() {
         ReactGA.initialize('UA-121693825-1');
         ReactGA.pageview(window.location.pathname + window.location.search);
@@ -89,21 +117,20 @@ class Map extends Component {
         map.addControl(new ScaleControl({
             maxWidth: 200
         }));
+        window.addEventListener("hashchange", this._hashHandler.bind(this), false);
+        this._hashHandler();
     }
     loadFromFirestore() {
         this.setState({ isLoaded: false });
-        this._clearData();
-        if (this.state.selectedTrip < 0) {
-            return;
-        }
-        // ReactMapGL.getMap().on('load',()=>{
         let ref = db.collection('ship-location')
             .orderBy('timestamp', 'asc');
-        if (this.state.selectedTrip !== 0) {
-            const trip = trips[this.state.selectedTrip];
-            ref = ref.where('timestamp', '>', trip.start)
-                .where('timestamp', '<', trip.end)
+        if (this.state.start){
+            ref = ref.where('timestamp', '>', this.state.start);
         }
+        if (this.state.end){
+            ref = ref.where('timestamp', '<=', this.state.end);
+        }
+       
         ref.get()
             .then(collection => {
                 const data = collection.docs.map(d => ({ ...(d.data()), 'marker-symbol': 'rocket' }))
@@ -116,10 +143,20 @@ class Map extends Component {
                 });
                 const geoJsonData = GeoJSON.parse(data, { Point: ['lat', 'long'] });
                 const geoJsonLine = GeoJSON.parse({ line }, { 'LineString': 'line' });
+                this._clearData();
                 this._loadData(geoJsonData, geoJsonLine)
-                const { lat, long, timestamp } = data[data.length - 1];
-                // this.setState({ viewport: { ...this.state.viewport, latitude: +lat, longitude: +long, zoom: 4 } });
-                this._goToPos(+lat, +long, 4)
+                if (data.length>0){
+                    const { lat, long, timestamp } = data[data.length - 1];
+                    // this.setState({ viewport: { ...this.state.viewport, latitude: +lat, longitude: +long, zoom: 4 } });
+                    this._goToPos(+lat, +long, 4)
+                    this.setState({
+                        lastPos: {
+                            lat: +lat,
+                            long: +long,
+                            timestamp: new Date(timestamp)
+                        }
+                    })
+                }
                 const dateMarkers = data.filter(d => {
                     if (!d.timestamp) {
                         return false;
@@ -128,13 +165,9 @@ class Map extends Component {
                     return (hours === 7);
                 })
                 this.setState({
-                    lastPos: {
-                        lat: +lat,
-                        long: +long,
-                        timestamp: new Date(timestamp)
-                    },
                     isLoaded: true,
-                    dateMarkers
+                    dateMarkers,
+                    warningOpen:data.length===0
                 })
             })
         // })
@@ -250,7 +283,7 @@ class Map extends Component {
     };
 
     componentWillUpdate(nextProps, nextState){
-        if (this.state.selectedTrip !== nextState.selectedTrip){
+        if (this.state.start !== nextState.start || this.state.end !== nextState.end){
             this.loadFromFirestore();
         }
     }
@@ -277,26 +310,33 @@ class Map extends Component {
                         {this._renderMouseLocation()}
                     </div>
                 </ReactMapGL>
-                <div className="dropdown-container">
-                    <form>
-                        <FormControl>
-                            <InputLabel htmlFor="trip">Trip</InputLabel>
-                            <Select
-                                value={this.state.selectedTrip}
-                                onChange={this.handleChange}
-                                inputProps={{
-                                    name: 'trip',
-                                    id: 'trip',
-                                }}
-                            >
-                                <MenuItem value="">
-                                    <em>None</em>
-                                </MenuItem>
-                                {trips.map(t => (<MenuItem key={t.value} value={t.value}>{t.title}</MenuItem>))}
-                            </Select>
-                        </FormControl>
-                    </form>
-                </div>
+                <Snackbar
+          anchorOrigin={{
+            vertical: 'top',
+            horizontal: 'center',
+          }}
+          open={this.state.warningOpen}
+          autoHideDuration={6000}
+        //   onClose={this.handleClose}
+          ContentProps={{
+            'aria-describedby': 'message-id',
+          }}
+          message={<span id="message-id">No data loaded. Check your dates</span>}
+        //   action={[
+        //     <Button key="undo" color="secondary" size="small" onClick={this.handleClose}>
+        //       UNDO
+        //     </Button>,
+        //     <IconButton
+        //       key="close"
+        //       aria-label="Close"
+        //       color="inherit"
+        //       className={classes.close}
+        //       onClick={this.handleClose}
+        //     >
+        //       <CloseIcon />
+        //     </IconButton>,
+        //   ]}
+        />
             </div>
         );
     }
