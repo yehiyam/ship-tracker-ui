@@ -31,8 +31,8 @@ class Map extends Component {
         isLoaded: true,
         hoverInfo: null,
         mouseLocation: null,
-        start: null,
-        end: null,
+        start: 0, 
+        end: 0,
         warningOpen:false
 
     };
@@ -91,7 +91,7 @@ class Map extends Component {
     _hashHandler(){
         const parsed = queryString.parse(window.location.hash?window.location.hash:window.location.search);
         this.setState({
-            start: this._parseDate(parsed.start),
+            start: this._parseDate(parsed.start) || 1534712400000 ,// Aug 20 2018
             end: this._parseDate(parsed.end)
         })
     }
@@ -276,8 +276,8 @@ class Map extends Component {
         
     };
 
-    componentWillUpdate(nextProps, nextState){
-        if (this.state.start !== nextState.start || this.state.end !== nextState.end){
+    componentDidUpdate(prevProps, prevState, snapshot){
+        if (this.state.start !== prevState.start || this.state.end !== prevState.end){
             this.loadFromFirestore();
         }
     }
@@ -291,7 +291,7 @@ class Map extends Component {
                     mapStyle={mapStyle}
                     {...viewport}
                     onViewportChange={this._onViewportChange}
-                    onLoad={this.loadFromFirestore.bind(this)}
+                    // onLoad={this.loadFromFirestore.bind(this)}
                     onHover={this._onHover.bind(this)}
                     onMouseMove={this._onMouseMove.bind(this)}
                     ref={map => this.mapRef = map}     >
@@ -315,7 +315,7 @@ class Map extends Component {
           ContentProps={{
             'aria-describedby': 'message-id',
           }}
-          message={<span id="message-id">No data loaded. Check your dates</span>}
+          message={<span id="message-id">No data loaded. Check your dates ({moment(this.state.start).format('YYYY MM DD')})</span>}
         //   action={[
         //     <Button key="undo" color="secondary" size="small" onClick={this.handleClose}>
         //       UNDO
