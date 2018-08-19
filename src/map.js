@@ -97,7 +97,7 @@ class Map extends Component {
     }
     componentDidMount() {
         ReactGA.initialize('UA-121693825-1');
-        ReactGA.pageview(window.location.pathname + window.location.search);
+        ReactGA.pageview(window.location.pathname + window.location.search + window.location.hash);
         window.onresize = () => {
             this.setState({
                 viewport: {
