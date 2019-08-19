@@ -116,7 +116,7 @@ class Map extends Component {
     }
     loadFromFirestore() {
         this.setState({ isLoaded: false });
-        let ref = db.collection('ship-location')
+        let ref = db.collection('ship-location-new')
             .orderBy('timestamp', 'asc');
         if (this.state.start){
             ref = ref.where('timestamp', '>', this.state.start);
@@ -140,14 +140,15 @@ class Map extends Component {
                 this._clearData();
                 this._loadData(geoJsonData, geoJsonLine)
                 if (data.length>0){
-                    const { lat, long, timestamp } = data[data.length - 1];
+                    const { lat, long, timestamp, title } = data[data.length - 1];
                     // this.setState({ viewport: { ...this.state.viewport, latitude: +lat, longitude: +long, zoom: 4 } });
                     this._goToPos(+lat, +long, 4)
                     this.setState({
                         lastPos: {
                             lat: +lat,
                             long: +long,
-                            timestamp: new Date(timestamp)
+                            timestamp: new Date(timestamp),
+                            title
                         }
                     })
                 }
@@ -188,7 +189,7 @@ class Map extends Component {
             <Marker latitude={lat} longitude={long} >
                 <div className="station">
                     <span>
-                        {item.timestamp.toString()}
+                        {`${item.title}-${item.timestamp.toString()}`}
                     </span>
                 </div>
             </Marker>
@@ -265,7 +266,7 @@ class Map extends Component {
         }
         return (
             <Marker latitude={hoverInfo.lngLat[1]} longitude={hoverInfo.lngLat[0]}>
-                <div className="station"><span>{moment(hoverInfo.properties.timestamp).tz('Asia/Kamchatka').format('D MMM H:mm')}</span></div>
+                <div className="station"><span>{`${hoverInfo.properties.title}-${moment(hoverInfo.properties.timestamp).tz('Asia/Kamchatka').format('D MMM H:mm')}`}</span></div>
             </Marker>
         )
 
